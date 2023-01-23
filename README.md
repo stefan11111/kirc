@@ -1,5 +1,7 @@
 # kirc
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/0ee7e316ba5f4e3d940a4397a4219bc6)](https://app.codacy.com/gh/stefan11111/kirc?utm_source=github.com&utm_medium=referral&utm_content=stefan11111/kirc&utm_campaign=Badge_Grade_Settings)
+
 kirc (KISS for IRC) is a tiny IRC client written in POSIX C99.
 
 ## Installation
