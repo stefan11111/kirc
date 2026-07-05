@@ -1743,6 +1743,10 @@ static void slot_process(state l, char *buf, size_t buf_len, size_t i) {
         return;
     }
 
+    if ((dcc_sessions.slots[i].bytes_read == dcc_sessions.slots[i].file_size) && !_write) {
+        goto close_fd;
+    }
+
     int n = read(_write ? file_fd : sock_fd, buf, buf_len);
     if (n == -1) {
         err_str = "read";
@@ -1779,6 +1783,11 @@ static void slot_process(state l, char *buf, size_t buf_len, size_t i) {
     if (ack == htonll(file_size << ack_shift)) {
         goto close_fd;
     }
+
+    if ((dcc_sessions.slots[i].bytes_read == dcc_sessions.slots[i].file_size) && !_write) {
+        goto close_fd;
+    }
+
     return;
 handle_err:
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -1794,6 +1803,13 @@ handle_err:
     }
     return;
 close_fd:
+    if ((dcc_sessions.slots[i].bytes_read == dcc_sessions.slots[i].file_size) && !_write) {
+        char *filename = dcc_sessions.slots[i].filename + strlen(dcc_sessions.slots[i].filename);
+        while (filename > dcc_sessions.slots[i].filename && filename[-1] != '/') filename--;
+        printf("\x1b[94mDCC Download Finished: %s, size: %llu Bytes", filename, dcc_sessions.slots[i].file_size);
+        printf("\x1b[0m\r\n");
+    }
+
     shutdown(sock_fd, SHUT_RDWR);
     if (_write) {
         shutdown(_write - 1, SHUT_RDWR);
