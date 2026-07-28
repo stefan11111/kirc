@@ -1790,6 +1790,9 @@ static void slot_process(state l, char *buf, size_t buf_len, size_t i) {
 
     return;
 handle_err:
+    if ((dcc_sessions.slots[i].bytes_read == dcc_sessions.slots[i].file_size) && !_write) {
+        goto close_fd;
+    }
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
         return;
     }
