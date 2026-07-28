@@ -1739,12 +1739,13 @@ static void slot_process(state l, char *buf, size_t buf_len, size_t i) {
     const int sock_fd = dcc_sessions.sock_fds[i].fd;
     const int file_fd = dcc_sessions.slots[i].file_fd;
 
-    if (!(dcc_sessions.sock_fds[i].revents & POLLIN) && !_write) {
-        return;
+    if (dcc_sessions.slots[i].file_size && !_write &&
+        (dcc_sessions.slots[i].bytes_read == dcc_sessions.slots[i].file_size)) {
+        goto close_fd;
     }
 
-    if ((dcc_sessions.slots[i].bytes_read == dcc_sessions.slots[i].file_size) && !_write) {
-        goto close_fd;
+    if (!(dcc_sessions.sock_fds[i].revents & POLLIN) && !_write) {
+        return;
     }
 
     int n = read(_write ? file_fd : sock_fd, buf, buf_len);
