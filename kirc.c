@@ -1739,16 +1739,27 @@ static void slot_process(state l, char *buf, size_t buf_len, size_t i) {
     const int sock_fd = dcc_sessions.sock_fds[i].fd;
     const int file_fd = dcc_sessions.slots[i].file_fd;
 
+    unsigned long long file_size;
+    unsigned long long bytes_read;
+    unsigned ack_is_64;
+    unsigned ack_shift;
+    unsigned long long ack;
+
+    int last_ack = 0;
+
+    int n;
+
     if (dcc_sessions.slots[i].file_size && !_write &&
         (dcc_sessions.slots[i].bytes_read == dcc_sessions.slots[i].file_size)) {
-        goto close_fd;
+        last_ack = 1;
+        goto write_ack;
     }
 
     if (!(dcc_sessions.sock_fds[i].revents & POLLIN) && !_write) {
         return;
     }
 
-    int n = read(_write ? file_fd : sock_fd, buf, buf_len);
+    n = read(_write ? file_fd : sock_fd, buf, buf_len);
     if (n == -1) {
         err_str = "read";
         goto handle_err;
@@ -1764,15 +1775,22 @@ static void slot_process(state l, char *buf, size_t buf_len, size_t i) {
         goto handle_err;
     }
 
+write_ack:
     if (!(dcc_sessions.sock_fds[i].revents & POLLOUT) && !_write) {
         refresh_line(l);
+        if (last_ack) {
+            /* We've tried again to write the last ack out of courtesy to the server */
+            /* If it still doesn't want it, close the connection */
+            goto close_fd;
+        }
         return;
     }
-    unsigned long long file_size = dcc_sessions.slots[i].file_size;
-    unsigned long long bytes_read = dcc_sessions.slots[i].bytes_read;
-    unsigned ack_is_64 = file_size > UINT_MAX;
-    unsigned ack_shift = (1 - ack_is_64) * 32;
-    unsigned long long ack = htonll(bytes_read << ack_shift);
+
+    file_size = dcc_sessions.slots[i].file_size;
+    bytes_read = dcc_sessions.slots[i].bytes_read;
+    ack_is_64 = file_size > UINT_MAX;
+    ack_shift = (1 - ack_is_64) * 32;
+    ack = htonll(bytes_read << ack_shift);
 
     if ((_write ? read(sock_fd, &ack, ack_is_64 ? 8 : 4) : write(sock_fd, &ack, ack_is_64 ? 8 : 4))< 0) {
         err_str = _write ? "read" : "write";
